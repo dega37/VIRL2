@@ -125,6 +125,7 @@ ip route 10.1.0.0 255.255.0.0 Null0 254
 end
 </entry>
             <entry type="string" key="AutoNetkit.mgmt_ip"></entry>
+            <entry type="Boolean" key="Auto-generate config">false</entry>
         </extensions>
         <interface netPrefixLenV4="30" ipv4="10.1.0.1" name="GigabitEthernet0/1" id="0"/>
         <interface netPrefixLenV4="30" ipv4="10.1.0.5" name="GigabitEthernet0/2" id="1"/>
@@ -246,6 +247,7 @@ router bgp 10
 end
 </entry>
             <entry type="string" key="AutoNetkit.mgmt_ip"></entry>
+            <entry type="Boolean" key="Auto-generate config">false</entry>
         </extensions>
         <interface netPrefixLenV4="30" ipv4="10.1.0.2" name="GigabitEthernet0/1" id="0"/>
         <interface netPrefixLenV4="30" ipv4="10.1.128.2" name="GigabitEthernet0/2" id="1"/>
@@ -351,6 +353,7 @@ router bgp 10
 end
 </entry>
             <entry type="string" key="AutoNetkit.mgmt_ip"></entry>
+            <entry type="Boolean" key="Auto-generate config">false</entry>
         </extensions>
         <interface netPrefixLenV4="30" ipv4="10.1.128.1" name="GigabitEthernet0/1" id="0"/>
     </node>
@@ -509,6 +512,7 @@ ip route 10.5.0.0 255.255.0.0 Null0 254
 end
 </entry>
             <entry type="string" key="AutoNetkit.mgmt_ip"></entry>
+            <entry type="Boolean" key="Auto-generate config">false</entry>
         </extensions>
         <interface netPrefixLenV4="30" ipv4="10.1.0.6" name="GigabitEthernet0/1" id="0"/>
         <interface netPrefixLenV4="30" ipv4="10.4.0.2" name="GigabitEthernet0/2" id="1"/>
@@ -632,6 +636,7 @@ ip route 10.4.0.0 255.255.0.0 Null0 254
 end
 </entry>
             <entry type="string" key="AutoNetkit.mgmt_ip"></entry>
+            <entry type="Boolean" key="Auto-generate config">false</entry>
         </extensions>
         <interface netPrefixLenV4="30" ipv4="10.4.0.1" name="GigabitEthernet2" id="0"/>
         <interface netPrefixLenV4="30" ipv4="10.4.0.6" name="GigabitEthernet3" id="1"/>
@@ -760,6 +765,7 @@ router bgp 998
       next-hop-self
         </entry>
             <entry type="string" key="AutoNetkit.mgmt_ip"></entry>
+            <entry type="Boolean" key="Auto-generate config">false</entry>
         </extensions>
         <interface netPrefixLenV4="30" ipv4="10.4.0.5" name="Ethernet2/1" id="0"/>
         <interface netPrefixLenV4="30" ipv4="10.4.128.1" name="Ethernet2/2" id="1"/>
@@ -767,13 +773,22 @@ router bgp 998
     </node>
     <node ipv4="192.168.0.25" location="131,26" subtype="CSR1000v" type="SIMPLE" name="BDCASR">
         <extensions>
-            <entry type="Integer" key="AutoNetkit.ASN">1</entry>
-            <entry type="string" key="config">! IOS Config generated on 2015-08-17 20:14
-! by autonetkit_0.15.3
+            <entry type="string" key="config">! IOS Config generated on 2015-10-02 16:13
+! by autonetkit_0.18.1
 !
 hostname BDCASR
 boot-start-marker
 boot-end-marker
+!
+vrf definition Mgmt-intf
+!
+ address-family ipv4
+ exit-address-family
+ !
+ address-family ipv6
+ exit-address-family
+!
+!
 !
 license accept end user agreement
 license boot level premium
@@ -811,6 +826,7 @@ interface Loopback0
 !
 interface GigabitEthernet1
   description OOB Management
+  vrf forwarding Mgmt-intf
   ! Configured on launch
   no ip address
   cdp enable
@@ -818,77 +834,106 @@ interface GigabitEthernet1
 !
 interface GigabitEthernet2
   description to Verizon
-  ip address 10.0.128.1 255.255.128.0
+  ip address 10.1.0.6 255.255.255.252
   cdp enable
   no shutdown
 !
 interface GigabitEthernet3
   description to HMAVerizon
-  ip address 10.0.0.1 255.255.128.0
+  ip address 10.1.0.2 255.255.255.252
   cdp enable
   no shutdown
 !
 interface GigabitEthernet4
   description to INet
-  ip address 10.3.0.1 255.255.0.0
+  ip address 10.3.0.2 255.255.0.0
+  cdp enable
+  no shutdown
+!
+interface GigabitEthernet5
+  description to BDCWAGG1
+  ip address 10.1.128.2 255.255.255.252
+  cdp enable
+  no shutdown
+!
+interface GigabitEthernet6
+  description to BHMAL1-T-WAG-01
+  ip address 10.1.128.6 255.255.255.252
   cdp enable
   no shutdown
 !
 !
 !
-router eigrp as1
+router eigrp as65001
  !
- address-family ipv4 unicast autonomous-system 1
+ address-family ipv4 unicast autonomous-system 65001
   !
   topology base
   exit-af-topology
+  network 10.1.128.0 0.0.0.3
   network 192.168.0.25 0.0.0.0
  exit-address-family
  !
 !
 !
-router bgp 1
+router bgp 65001
   bgp router-id 192.168.0.25
   no synchronization
 ! ibgp
+  ! ibgp peers
+  !
+  neighbor 192.168.0.41 remote-as 65001
+  neighbor 192.168.0.41 description iBGP peer BDCWAGG1
+  neighbor 192.168.0.41 update-source Loopback0
 !
 ! ebgp
   !
-  neighbor 10.3.0.2 remote-as 100
-  neighbor 10.3.0.2 description eBGP to INet
+  neighbor 10.3.0.1 remote-as 100
+  neighbor 10.3.0.1 description eBGP to INet
   !
-  neighbor 10.0.0.2 remote-as 65000
-  neighbor 10.0.0.2 description eBGP to HMAVerizon
+  neighbor 10.1.128.5 remote-as 245
+  neighbor 10.1.128.5 description eBGP to BHMAL1-T-WAG-01
   !
-  neighbor 10.0.128.2 remote-as 65000
-  neighbor 10.0.128.2 description eBGP to Verizon
+  neighbor 10.1.0.1 remote-as 65000
+  neighbor 10.1.0.1 description eBGP to HMAVerizon
+  !
+  neighbor 10.1.0.5 remote-as 65000
+  neighbor 10.1.0.5 description eBGP to Verizon
 !
 !
  !
  address-family ipv4
   network 192.168.0.25 mask 255.255.255.255
-  network 10.0.0.0 mask 255.255.0.0
-  neighbor 10.3.0.2 activate
-  neighbor 10.3.0.2 send-community
-  neighbor 10.3.0.2 next-hop-self
-  neighbor 10.0.0.2 activate
-  neighbor 10.0.0.2 send-community
-  neighbor 10.0.0.2 next-hop-self
-  neighbor 10.0.128.2 activate
-  neighbor 10.0.128.2 send-community
-  neighbor 10.0.128.2 next-hop-self
+  network 10.1.0.0 mask 255.255.0.0
+  neighbor 192.168.0.41 activate
+  neighbor 192.168.0.41 next-hop-self
+  neighbor 10.3.0.1 activate
+  neighbor 10.3.0.1 send-community
+  neighbor 10.3.0.1 next-hop-self
+  neighbor 10.1.128.5 activate
+  neighbor 10.1.128.5 send-community
+  neighbor 10.1.128.5 next-hop-self
+  neighbor 10.1.0.1 activate
+  neighbor 10.1.0.1 send-community
+  neighbor 10.1.0.1 next-hop-self
+  neighbor 10.1.0.5 activate
+  neighbor 10.1.0.5 send-community
+  neighbor 10.1.0.5 next-hop-self
  exit-address-family
 !
 !
-ip route 10.0.0.0 255.255.0.0 Null0 254
+ip route 10.1.0.0 255.255.0.0 Null0 254
 !
 end
 </entry>
             <entry type="string" key="AutoNetkit.mgmt_ip"></entry>
+            <entry type="Integer" key="AutoNetkit.ASN">65001</entry>
         </extensions>
-        <interface netPrefixLenV4="17" ipv4="10.0.128.1" name="GigabitEthernet2" id="0"/>
-        <interface netPrefixLenV4="17" ipv4="10.0.0.1" name="GigabitEthernet3" id="1"/>
-        <interface netPrefixLenV4="16" ipv4="10.3.0.1" name="GigabitEthernet4" id="2"/>
+        <interface netPrefixLenV4="30" ipv4="10.1.0.6" name="GigabitEthernet2" id="0"/>
+        <interface netPrefixLenV4="30" ipv4="10.1.0.2" name="GigabitEthernet3" id="1"/>
+        <interface netPrefixLenV4="16" ipv4="10.3.0.2" name="GigabitEthernet4" id="2"/>
+        <interface netPrefixLenV4="30" ipv4="10.1.128.2" name="GigabitEthernet5" id="3"/>
+        <interface netPrefixLenV4="30" ipv4="10.1.128.6" name="GigabitEthernet6" id="4"/>
     </node>
     <node ipv4="192.168.0.29" location="300,26" subtype="CSR1000v" type="SIMPLE" name="HMAVerizon">
         <extensions>
@@ -1012,12 +1057,13 @@ ip route 10.5.0.0 255.255.0.0 Null0 254
 end
 </entry>
             <entry type="string" key="AutoNetkit.mgmt_ip"></entry>
+            <entry type="Boolean" key="Auto-generate config">false</entry>
         </extensions>
         <interface netPrefixLenV4="17" ipv4="10.0.0.2" name="GigabitEthernet2" id="0"/>
         <interface netPrefixLenV4="30" ipv4="10.4.128.2" name="GigabitEthernet3" id="1"/>
         <interface netPrefixLenV4="17" ipv4="10.5.0.2" name="GigabitEthernet4" id="2"/>
     </node>
-    <node ipv4="192.168.0.9" location="18,28" subtype="IOSv" type="SIMPLE" name="INet">
+    <node ipv4="192.168.0.9" location="142,-55" subtype="IOSv" type="SIMPLE" name="INet">
         <extensions>
             <entry type="Integer" key="AutoNetkit.ASN">100</entry>
             <entry type="string" key="config">! IOS Config generated on 2015-08-17 20:14
@@ -1114,6 +1160,7 @@ ip route 10.3.0.0 255.255.0.0 Null0 254
 end
 </entry>
             <entry type="string" key="AutoNetkit.mgmt_ip"></entry>
+            <entry type="Boolean" key="Auto-generate config">false</entry>
         </extensions>
         <interface netPrefixLenV4="16" ipv4="10.3.0.2" name="GigabitEthernet0/1" id="0"/>
     </node>
@@ -1237,6 +1284,7 @@ ip route 10.2.0.0 255.255.0.0 Null0 254
 end
 </entry>
             <entry type="string" key="AutoNetkit.mgmt_ip"></entry>
+            <entry type="Boolean" key="Auto-generate config">false</entry>
         </extensions>
         <interface netPrefixLenV4="17" ipv4="10.5.128.1" name="GigabitEthernet0/1" id="0"/>
         <interface netPrefixLenV4="17" ipv4="10.2.128.1" name="GigabitEthernet0/2" id="1"/>
@@ -1350,6 +1398,7 @@ router bgp 11
 end
 </entry>
             <entry type="string" key="AutoNetkit.mgmt_ip"></entry>
+            <entry type="Boolean" key="Auto-generate config">false</entry>
         </extensions>
         <interface netPrefixLenV4="17" ipv4="10.2.128.2" name="GigabitEthernet0/1" id="0"/>
         <interface netPrefixLenV4="17" ipv4="10.2.0.1" name="GigabitEthernet0/2" id="1"/>
@@ -1454,6 +1503,7 @@ router bgp 11
 end
 </entry>
             <entry type="string" key="AutoNetkit.mgmt_ip"></entry>
+            <entry type="Boolean" key="Auto-generate config">false</entry>
         </extensions>
         <interface netPrefixLenV4="17" ipv4="10.2.0.2" name="GigabitEthernet0/1" id="0"/>
     </node>
@@ -1551,8 +1601,205 @@ router bgp 998
 end
 </entry>
             <entry type="string" key="AutoNetkit.mgmt_ip"></entry>
+            <entry type="Boolean" key="Auto-generate config">false</entry>
         </extensions>
         <interface netPrefixLenV4="30" ipv4="10.4.128.6" name="GigabitEthernet0/1" id="0"/>
+    </node>
+    <node ipv4="192.168.0.41" location="18,26" subtype="NX-OSv" type="SIMPLE" name="BDCWAGG1">
+        <extensions>
+            <entry type="Integer" key="AutoNetkit.ASN">65001</entry>
+            <entry type="string" key="config">! NX-OSv Config generated on 2015-10-02 16:13
+! by autonetkit_0.18.1
+!
+version 6.2(1)
+license grace-period
+!
+hostname BDCWAGG1
+vdc BDCWAGG1 id 1
+  allocate interface Ethernet2/1-48
+  allocate interface Ethernet3/1-48
+  limit-resource vlan minimum 16 maximum 4094
+  limit-resource vrf minimum 2 maximum 4096
+  limit-resource port-channel minimum 0 maximum 768
+  limit-resource u4route-mem minimum 96 maximum 96
+  limit-resource u6route-mem minimum 24 maximum 24
+  limit-resource m4route-mem minimum 58 maximum 58
+  limit-resource m6route-mem minimum 8 maximum 8
+
+feature telnet
+
+feature eigrp
+feature bgp
+
+username adminbackup password 5 ! role network-operator
+username admin password 5 $1$KuOSBsvW$Cy0TSD..gEBGBPjzpDgf51 role network-admin
+username cisco password 5 $1$Nk7ZkwH0$fyiRmMMfIheqE3BqvcL0C1 role network-operator
+username cisco role network-admin
+username lab password 5 $1$buoy/oqy$.EXQz8rCn72ii8qtdldj00 role network-admin
+no password strength-check
+ip domain-lookup
+copp profile strict
+snmp-server user lab network-admin auth md5 0x5ceb414591539ee35159fca86fdfa101 priv 0x5ceb414591539ee35159fca86fdfa101 localizedkey
+snmp-server user admin network-admin auth md5 0x328945d53e05e8e7207f8c20b142f0b7 priv 0x328945d53e05e8e7207f8c20b142f0b7 localizedkey
+snmp-server user cisco network-operator auth md5 0x55b3c64a53fb95518e75358ee75e82e9 priv 0x55b3c64a53fb95518e75358ee75e82e9 localizedkey
+snmp-server user cisco network-admin
+rmon event 1 log trap public description FATAL(1) owner PMON@FATAL
+rmon event 2 log trap public description CRITICAL(2) owner PMON@CRITICAL
+rmon event 3 log trap public description ERROR(3) owner PMON@ERROR
+rmon event 4 log trap public description WARNING(4) owner PMON@WARNING
+rmon event 5 log trap public description INFORMATION(5) owner PMON@INFO
+
+
+vlan 1
+
+vrf context management
+hardware forwarding unicast trace
+
+interface Loopback0
+  description Loopback
+  ip address 192.168.0.41/32
+  ip router eigrp 65001
+
+interface Ethernet2/1
+  description to BDCASR
+  ip address 10.1.128.1/30
+  ip router eigrp 65001
+  duplex full
+  no mac-address
+  no shutdown
+
+interface mgmt0
+  description OOB Management
+  ! Configured on launch
+  no ip address
+  duplex full
+  no mac-address
+  no shutdown
+  vrf member management
+
+
+line console
+line vty
+router eigrp 65001
+ autonomous-system 65001
+ router-id 192.168.0.41
+ address-family ipv4 unicast
+router bgp 65001
+  router-id 192.168.0.41
+  address-family ipv4 unicast
+    network 192.168.0.41/32
+  !
+! iBGP
+!
+! iBGP peers
+  !
+  neighbor 192.168.0.25 remote-as 65001
+    description iBGP peer BDCASR
+    update-source Loopback0
+    address-family ipv4 unicast
+    !
+    !
+        </entry>
+            <entry type="string" key="AutoNetkit.mgmt_ip"></entry>
+        </extensions>
+        <interface netPrefixLenV4="30" ipv4="10.1.128.1" name="Ethernet2/1" id="0"/>
+    </node>
+    <node ipv4="192.168.0.33" location="96,131" subtype="NX-OSv" type="SIMPLE" name="BHMAL1-T-WAG-01">
+        <extensions>
+            <entry type="Integer" key="AutoNetkit.ASN">245</entry>
+            <entry type="string" key="config">! NX-OSv Config generated on 2015-10-02 16:13
+! by autonetkit_0.18.1
+!
+version 6.2(1)
+license grace-period
+!
+hostname BHMAL1-T-WAG-01
+vdc BHMAL1-T-WAG-01 id 1
+  allocate interface Ethernet2/1-48
+  allocate interface Ethernet3/1-48
+  limit-resource vlan minimum 16 maximum 4094
+  limit-resource vrf minimum 2 maximum 4096
+  limit-resource port-channel minimum 0 maximum 768
+  limit-resource u4route-mem minimum 96 maximum 96
+  limit-resource u6route-mem minimum 24 maximum 24
+  limit-resource m4route-mem minimum 58 maximum 58
+  limit-resource m6route-mem minimum 8 maximum 8
+
+feature telnet
+
+feature eigrp
+feature bgp
+
+username adminbackup password 5 ! role network-operator
+username admin password 5 $1$KuOSBsvW$Cy0TSD..gEBGBPjzpDgf51 role network-admin
+username cisco password 5 $1$Nk7ZkwH0$fyiRmMMfIheqE3BqvcL0C1 role network-operator
+username cisco role network-admin
+username lab password 5 $1$buoy/oqy$.EXQz8rCn72ii8qtdldj00 role network-admin
+no password strength-check
+ip domain-lookup
+copp profile strict
+snmp-server user lab network-admin auth md5 0x5ceb414591539ee35159fca86fdfa101 priv 0x5ceb414591539ee35159fca86fdfa101 localizedkey
+snmp-server user admin network-admin auth md5 0x328945d53e05e8e7207f8c20b142f0b7 priv 0x328945d53e05e8e7207f8c20b142f0b7 localizedkey
+snmp-server user cisco network-operator auth md5 0x55b3c64a53fb95518e75358ee75e82e9 priv 0x55b3c64a53fb95518e75358ee75e82e9 localizedkey
+snmp-server user cisco network-admin
+rmon event 1 log trap public description FATAL(1) owner PMON@FATAL
+rmon event 2 log trap public description CRITICAL(2) owner PMON@CRITICAL
+rmon event 3 log trap public description ERROR(3) owner PMON@ERROR
+rmon event 4 log trap public description WARNING(4) owner PMON@WARNING
+rmon event 5 log trap public description INFORMATION(5) owner PMON@INFO
+
+
+vlan 1
+
+vrf context management
+hardware forwarding unicast trace
+
+interface Loopback0
+  description Loopback
+  ip address 192.168.0.33/32
+  ip router eigrp 245
+
+interface Ethernet2/1
+  description to BDCASR
+  ip address 10.1.128.5/30
+  duplex full
+  no mac-address
+  no shutdown
+
+interface mgmt0
+  description OOB Management
+  ! Configured on launch
+  no ip address
+  duplex full
+  no mac-address
+  no shutdown
+  vrf member management
+
+
+line console
+line vty
+router eigrp 245
+ autonomous-system 245
+ router-id 192.168.0.33
+ address-family ipv4 unicast
+router bgp 245
+  router-id 192.168.0.33
+  address-family ipv4 unicast
+    network 192.168.0.33/32
+  !
+! iBGP
+!
+! eBGP peers
+  !
+  neighbor 10.1.128.6 remote-as 65001
+    description eBGP peer BDCASR
+    address-family ipv4 unicast
+      send-community standard
+      next-hop-self
+        </entry>
+            <entry type="string" key="AutoNetkit.mgmt_ip"></entry>
+        </extensions>
+        <interface netPrefixLenV4="30" ipv4="10.1.128.5" name="Ethernet2/1" id="0"/>
     </node>
     <connection src="/virl:topology/virl:node[2]/virl:interface[1]" dst="/virl:topology/virl:node[1]/virl:interface[1]"/>
     <connection src="/virl:topology/virl:node[2]/virl:interface[2]" dst="/virl:topology/virl:node[3]/virl:interface[1]"/>
@@ -1568,4 +1815,6 @@ end
     <connection src="/virl:topology/virl:node[10]/virl:interface[2]" dst="/virl:topology/virl:node[11]/virl:interface[1]"/>
     <connection src="/virl:topology/virl:node[11]/virl:interface[2]" dst="/virl:topology/virl:node[12]/virl:interface[1]"/>
     <connection src="/virl:topology/virl:node[6]/virl:interface[3]" dst="/virl:topology/virl:node[13]/virl:interface[1]"/>
+    <connection src="/virl:topology/virl:node[7]/virl:interface[4]" dst="/virl:topology/virl:node[14]/virl:interface[1]"/>
+    <connection src="/virl:topology/virl:node[7]/virl:interface[5]" dst="/virl:topology/virl:node[15]/virl:interface[1]"/>
 </topology>
